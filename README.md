@@ -11,7 +11,7 @@ Social media like feed built on  ASP.NET Blazor
 ![Home Page](Screenshot/Login.png)
 
 ### Home full
-![Home Page](Screenshot/Home full.png)
+![Home Page](Screenshot/Home%20full.png)
 
 ### Home Page
 ![Home Page](Screenshot/Home.png)
@@ -23,7 +23,7 @@ Social media like feed built on  ASP.NET Blazor
 ![Post2](Screenshot/Post2.png)
 
 ### Post with edit delete
-![Post with edit delete](Screenshot/Post with edit delete.png)
+![Post with edit delete](Screenshot/Post%20with%20edit%20delete.png)
 
 ### Delete
 ![Delete](Screenshot/Delete.png)
@@ -35,16 +35,16 @@ Social media like feed built on  ASP.NET Blazor
 ![Comment](Screenshot/Comment.png)
 
 ### Comment
-![Comment](Screenshot/comment edit delete.png)
+![Comment](Screenshot/comment%20edit%20delete.png)
 
 ### comment edit delete
-![comment edit delete](Screenshot/comment edit delete.png)
+![comment edit delete](Screenshot/comment%20edit%20delete.png)
 
 ### Edit comment
-![Edit comment](Screenshot/Edit comment.png)
+![Edit comment](Screenshot/Edit%20comment.png)
 
 ### Edit comment
-![Edit comment](Screenshot/Edit comment 2.png)
+![Edit comment](Screenshot/Edit%20comment%202.png)
 
 ### Create Create
 ![Create](Screenshot/CreatePost.png)
