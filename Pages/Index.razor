@@ -1,0 +1,98 @@
+﻿@page "/"
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@using System.ComponentModel.DataAnnotations
+@using BlazorBlog.Models
+
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-md-6 text-center">
+            <h1>BlazorBlog</h1>
+            <p>BlazorBlog helps you connect and share with the people in your life.</p>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header"><strong>Login to your account</strong></div>
+                <div class="card-body">
+                    <EditForm Model="loginModel" OnValidSubmit="HandleValidSubmit">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary />
+
+                        <div class="form-group">
+                            <label class="text-muted" for="exampleInputEmail1">Email address</label>
+                            <InputText id="exampleInputEmail1" class="form-control" @bind-Value="loginModel.Email" aria-describedby="emailHelp" placeholder="Enter email" />
+                            
+                        </div>
+                        <div class="form-group">
+                            <label class="text-muted" for="exampleInputPassword1">Password</label>
+                            <InputText type="password" id="exampleInputPassword1" class="form-control" @bind-Value="loginModel.Password" placeholder="Password" />
+                            
+                        </div>
+                        <div class="form-group form-check">
+                            <InputCheckbox id="rememberMeCheck" class="form-check-input" @bind-Value="loginModel.RememberMe" />
+                            <label class="form-check-label" for="rememberMeCheck">Remember me?</label>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary">Login</button>
+                    </EditForm>
+
+                    @if (loginErrors != null)
+                    {
+                        <ul class="text-danger mt-2">
+                            @foreach (var error in loginErrors)
+                            {
+                                <li>@error</li>
+                            }
+                        </ul>
+                    }
+
+                    @if (errorMessage != null)
+                    {
+                        <div class="alert alert-danger mt-2">@errorMessage</div>
+                    }
+                </div>
+            </div>
+            <div class="text-center mt-3">
+                <a href="/createaccount" class="btn btn-success">Create New Account</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private LoginModel loginModel = new LoginModel();
+    private List<string> loginErrors;
+    private string errorMessage;
+
+    private async Task HandleValidSubmit()
+    {
+        loginErrors = null;
+        errorMessage = null;
+
+        try
+        {
+            var response = await Http.PostAsJsonAsync("api/login", loginModel);
+
+            if (response.IsSuccessStatusCode)
+            {
+                Navigation.NavigateTo("/Home");
+            }
+            else if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+            {
+                Navigation.NavigateTo($"/LoginWith2fa?ReturnUrl={Navigation.Uri}&RememberMe={loginModel.RememberMe}");
+            }
+            else if (response.StatusCode == System.Net.HttpStatusCode.Locked)
+            {
+                Navigation.NavigateTo("/Lockout");
+            }
+            else
+            {
+                loginErrors = new List<string> { await response.Content.ReadAsStringAsync() };
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+    }
+}

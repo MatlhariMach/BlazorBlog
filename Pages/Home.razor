@@ -1,0 +1,373 @@
+﻿@page "/Home"
+@inject IPostService PostService
+@inject UserManager<ApplicationUser> UserManager
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject StateContainerService StateContainer
+@inject NavigationManager Navigation
+@using BlazorBlog.Models
+@using BlazorBlog.Services
+@using BlazorBlog.Data
+@using Microsoft.AspNetCore.Identity
+@using System.Text;
+
+<h3>Posts</h3>
+
+@if (posts == null)
+{
+    <p>Loading...</p>
+}
+else if (posts.Count == 0)
+{
+    <p>No posts available.</p>
+}
+else
+{
+    <div class="container mt-5 mb-5">
+        @if (!string.IsNullOrEmpty(StateContainer.ErrorMessage))
+        {
+            <div class="alert alert-danger">@StateContainer.ErrorMessage</div>
+        }
+        <div class="row mb-3">
+            <div class="col-md-8 d-flex justify-content-end">
+                <button class="btn btn-success" @onclick="NavigateToCreatePost">Create Post</button>
+            </div>
+        </div>
+        @foreach (var post in posts.OrderByDescending(p => p.Timestamp))
+        {
+            <div class="row d-flex align-items-center justify-content-center mb-3">
+                <div class="col-md-8">
+                    <div class="card">
+                        <div class="d-flex justify-content-between p-2 px-3">
+                            <div class="d-flex flex-row align-items-center">
+                                @if (post.Author.ContentType != null)
+                                {
+                                    <img src="data:@post.Author.ContentType;base64,@(Convert.ToBase64String(post.Author.Data))" width="50" class="rounded-circle">
+                                }
+                                else
+                                {
+                                    <img src="https://i.imgur.com/UXdKE3o.jpg" width="50" class="rounded-circle">
+                                }
+                                <div class="d-flex flex-column ml-2">
+                                    <span class="font-weight-bold">@post.Author.UserName</span>
+                                    <small class="text-primary">Colleagues</small>
+                                </div>
+                            </div>
+                            <div class="d-flex flex-row mt-1 ellipsis">
+                                <small class="mr-2">@GetRelativeTime(post.Timestamp)</small>
+                                <i class="fa fa-ellipsis-h"></i>
+                            </div>
+                        </div>
+                        @if (post.ContentType != null && post.Data != null)
+                        {
+                            <img src="data:@post.ContentType;base64,@Convert.ToBase64String(post.Data)" class="img-fluid img-small">
+                        }
+                        <div class="p-2">
+                            <p class="text-justify">@post.Content</p>
+                            <hr>
+                            @if (IsPostOwner(post.AuthorId).Result)
+                            {
+                                <div class="post-actions">
+                                    <button class="btn btn-warning" @onclick="() => NavigateToEditPost(post.Id)">Edit</button>
+                                    <button class="btn btn-danger" @onclick="() => ShowDeleteConfirmation(post.Id)">Delete</button>
+                                </div>
+                            }
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="d-flex flex-row icons d-flex align-items-center">
+                                    <button class="btn-icon" @onclick="() => VoteUp(post.Id)">
+                                        <i class="fa fa-thumbs-up"></i> @post.VoteUp
+                                    </button>
+                                    <button class="btn-icon ml-2" @onclick="() => VoteDown(post.Id)">
+                                        <i class="fa fa-thumbs-down"></i> @post.Votedown
+                                    </button>
+                                </div>
+                            </div>
+                            <hr>
+                            <div class="comments">
+                                @foreach (var comment in post.Comments.OrderByDescending(p => p.Timestamp))
+                                {
+                                    <div class="d-flex flex-row align-items-center mb-2">
+                                        @if (comment.Author.ContentType != null)
+                                        {
+                                            <img src="data:@comment.Author.ContentType;base64,@(Convert.ToBase64String(comment.Author.Data))" width="30" class="rounded-circle">
+                                        }
+                                        else
+                                        {
+                                            <img src="https://i.imgur.com/UXdKE3o.jpg" width="30" class="rounded-circle">
+                                        }
+                                        <div class="d-flex flex-column ml-2">
+                                            <span class="font-weight-bold">@comment.Author.UserName</span>
+                                            <small>@GetRelativeTime(comment.Timestamp)</small>
+                                            <p>@comment.Content</p>
+                                            @if (IsCommentOwner(comment.AuthorId).Result)
+                                            {
+                                                <div class="comment-actions">
+                                                    <button class="btn btn-warning" @onclick="() => ShowEditComment(comment.Id, comment.Content)">Edit</button>
+                                                    <button class="btn btn-danger" @onclick="() => ShowDeleteCommentConfirmation(comment.Id)">Delete</button>
+                                                </div>
+                                            }
+                                        </div>
+                                        <div class="d-flex flex-row icons d-flex align-items-center ml-auto">
+                                            <button class="btn-icon" @onclick="() => CommentVoteUp(comment.Id)">
+                                                <i class="fa fa-thumbs-up"></i> @comment.VoteUp
+                                            </button>
+                                            <button class="btn-icon ml-2" @onclick="() => CommentVoteDown(comment.Id)">
+                                                <i class="fa fa-thumbs-down"></i> @comment.Votedown
+                                            </button>
+                                        </div>
+                                    </div>
+                                }
+
+                                <div class="comment-input">
+                                    <input type="text" class="form-control" @bind="newCommentContent" placeholder="Add a comment...">
+                                    
+
+                                    <button class="btn btn-success" @onclick="() => AddComment(post.Id)">Submit</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@if (showDeleteConfirmation)
+{
+    <div class="modal show" tabindex="-1" style="display: block;">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirm Delete</h5>
+                    <button type="button" class="close" aria-label="Close" @onclick="CancelDelete">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to delete this post?</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CancelDelete">Cancel</button>
+                    <button type="button" class="btn btn-danger" @onclick="DeletePost">Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
+@if (showDeleteCommentConfirmation)
+{
+    <div class="modal show" tabindex="-1" style="display: block;">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirm Delete</h5>
+                    <button type="button" class="close" aria-label="Close" @onclick="CancelDeleteComment">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to delete this comment?</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CancelDeleteComment">Cancel</button>
+                    <button type="button" class="btn btn-danger" @onclick="DeleteComment">Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
+
+@if (showEditComment)
+{
+    <div class="modal show" tabindex="-1" style="display: block;">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit Comment</h5>
+                    <button type="button" class="close" aria-label="Close" @onclick="CancelEditComment">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <input type="text" class="form-control" @bind="editCommentContent">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CancelEditComment">Cancel</button>
+                    <button type="button" class="btn btn-success" @onclick="SaveComment">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
+
+
+@code {
+    private List<Post> posts;
+    private string newCommentContent = string.Empty;
+    private string editCommentContent = string.Empty;
+    private bool showDeleteConfirmation = false;
+    private bool showDeleteCommentConfirmation = false;
+    private bool showEditComment = false;
+    private int postIdToDelete;
+    private int commentIdToDelete;
+    private int commentIdToEdit;
+    private ApplicationUser currentUser;
+
+    protected override async Task OnInitializedAsync()
+    {
+        posts = await PostService.GetPostsAsync();
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        currentUser = await UserManager.GetUserAsync(authState.User);
+    }
+
+    private async Task<bool> IsPostOwner(string authorId)
+    {
+        return authorId == currentUser?.Id;
+    }
+
+    private async Task<bool> IsCommentOwner(string authorId)
+    {
+        return authorId == currentUser?.Id;
+    }
+
+    private void ShowDeleteConfirmation(int postId)
+    {
+        postIdToDelete = postId;
+        showDeleteConfirmation = true;
+    }
+
+    private void ShowDeleteCommentConfirmation(int commentId)
+    {
+        commentIdToDelete = commentId;
+        showDeleteCommentConfirmation = true;
+    }
+
+    private async Task DeletePost()
+    {
+        await PostService.DeletePostAsync(postIdToDelete);
+        posts = await PostService.GetPostsAsync();
+        showDeleteConfirmation = false;
+    }
+
+    private async Task DeleteComment()
+    {
+        await PostService.DeleteCommentAsync(commentIdToDelete);
+        posts = await PostService.GetPostsAsync();
+        showDeleteCommentConfirmation = false;
+    }
+
+    private void CancelDelete()
+    {
+        showDeleteConfirmation = false;
+    }
+
+    private void CancelDeleteComment()
+    {
+        showDeleteCommentConfirmation = false;
+    }
+
+    private void ShowEditComment(int commentId, string content)
+    {
+        commentIdToEdit = commentId;
+        editCommentContent = content;
+        showEditComment = true;
+    }
+
+    private void CancelEditComment()
+    {
+        showEditComment = false;
+        editCommentContent = string.Empty;
+    }
+
+    private async Task SaveComment()
+    {
+        await PostService.EditCommentAsync(commentIdToEdit, editCommentContent);
+        posts = await PostService.GetPostsAsync();
+        showEditComment = false;
+        editCommentContent = string.Empty;
+    }
+
+    private async Task VoteUp(int postId)
+    {
+        await PostService.VoteUpAsync(postId, currentUser.Id);
+        posts = await PostService.GetPostsAsync();
+    }
+
+    private async Task VoteDown(int postId)
+    {
+        await PostService.VoteDownAsync(postId, currentUser.Id);
+        posts = await PostService.GetPostsAsync();
+    }
+
+    private async Task AddComment(int postId)
+    {
+        try
+        {
+            if (!string.IsNullOrEmpty(newCommentContent))
+            {
+                var comment = new Comment
+                    {
+                        Content = newCommentContent,
+                        Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                        AuthorId = currentUser.Id,
+                        PostId = postId
+                    };
+
+                await PostService.AddCommentAsync(comment);
+                newCommentContent = string.Empty;
+                posts = await PostService.GetPostsAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            StateContainer.ErrorMessage = ex.Message;
+        }
+    }
+
+    private async Task CommentVoteUp(int commentId)
+    {
+        await PostService.VoteUpCommentAsync(commentId, currentUser.Id);
+        posts = await PostService.GetPostsAsync();
+    }
+
+    private async Task CommentVoteDown(int commentId)
+    {
+        await PostService.VoteDownCommentAsync(commentId, currentUser.Id);
+        posts = await PostService.GetPostsAsync();
+    }
+
+    private string GetRelativeTime(long timestamp)
+    {
+        var dateTime = DateTimeOffset.FromUnixTimeMilliseconds(timestamp).UtcDateTime;
+        var timeSpan = DateTime.UtcNow - dateTime;
+
+        if (timeSpan.TotalSeconds < 60)
+            return $"{timeSpan.Seconds} seconds ago";
+        if (timeSpan.TotalMinutes < 60)
+            return $"{timeSpan.Minutes} minutes ago";
+        if (timeSpan.TotalHours < 24)
+            return $"{timeSpan.Hours} hours ago";
+        if (timeSpan.TotalDays < 7)
+            return $"{timeSpan.Days} days ago";
+        if (timeSpan.TotalDays < 30)
+            return $"{Math.Floor(timeSpan.TotalDays / 7)} weeks ago";
+        if (timeSpan.TotalDays < 365)
+            return $"{Math.Floor(timeSpan.TotalDays / 30)} months ago";
+
+        return $"{Math.Floor(timeSpan.TotalDays / 365)} years ago";
+    }
+
+    private void NavigateToEditPost(int postId)
+    {
+        Navigation.NavigateTo($"/editpost/{postId}");
+    }
+
+    private void NavigateToCreatePost()
+    {
+        Navigation.NavigateTo("/createpost");
+    }
+}
+

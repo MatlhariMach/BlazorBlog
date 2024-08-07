@@ -1,0 +1,155 @@
+﻿@page "/createaccount"
+@inject UserManager<ApplicationUser> UserManager
+@inject SignInManager<ApplicationUser> SignInManager
+@inject NavigationManager Navigation
+@using System.ComponentModel.DataAnnotations
+@using BlazorBlog.Models
+@using Microsoft.AspNetCore.Identity
+
+<div id="content" class="flex">
+    <div class="">
+        <div class="page-content page-container" id="page-content">
+            <div class="padding">
+                <div class="row justify-content-center">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header"><strong>Register a new account</strong></div>
+                            <div class="card-body">
+                                <EditForm Model="registerModel" OnValidSubmit="HandleValidSubmit">
+                                    <DataAnnotationsValidator />
+                                    <ValidationSummary />
+
+                                    <div class="form-group">
+                                        <label class="text-muted" for="firstName">First Name:</label>
+                                        <InputText id="firstName" class="form-control" @bind-Value="registerModel.FirstName" />
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="text-muted" for="lastName">Last Name:</label>
+                                        <InputText id="lastName" class="form-control" @bind-Value="registerModel.LastName" />
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="text-muted" for="email">Email:</label>
+                                        <InputText id="email" class="form-control" @bind-Value="registerModel.Email" />
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="text-muted" for="address">Address:</label>
+                                        <InputText id="address" class="form-control" @bind-Value="registerModel.Address" />
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="text-muted" for="phoneNumber">Phone Number:</label>
+                                        <InputText id="phoneNumber" class="form-control" @bind-Value="registerModel.PhoneNumber" />
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="text-muted" for="image">Image:</label>
+                                        <InputFile id="image" class="form-control" OnChange="HandleFileSelected" />
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="text-muted" for="password">Password:</label>
+                                        <InputText id="password" type="password" class="form-control" @bind-Value="registerModel.Password" />
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="text-muted" for="confirmPassword">Confirm Password:</label>
+                                        <InputText id="confirmPassword" type="password" class="form-control" @bind-Value="registerModel.ConfirmPassword" />
+                                    </div>
+
+                                    <button type="submit" class="btn btn-primary">Register</button>
+                                </EditForm>
+
+                                @if (registrationErrors != null)
+                                {
+                                    <ul class="text-danger mt-2">
+                                        @foreach (var error in registrationErrors)
+                                        {
+                                            <li>@error</li>
+                                        }
+                                    </ul>
+                                }
+
+                                @if (errorMessage != null)
+                                {
+                                    <div class="alert alert-danger mt-2">@errorMessage</div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private RegisterModel registerModel = new RegisterModel();
+    private List<string> registrationErrors;
+    private string errorMessage;
+
+    private IBrowserFile? selectedFile;
+
+    private async Task HandleFileSelected(InputFileChangeEventArgs e)
+    {
+        selectedFile = e.File;
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        registrationErrors = null;
+        errorMessage = null;
+
+        try
+        {
+            if (selectedFile != null)
+            {
+                const long maxFileSize = 10485760; // 10 MB
+                if (selectedFile.Size > maxFileSize)
+                {
+                    errorMessage = $"File size exceeds the maximum allowed size of {maxFileSize / 1048576} MB.";
+                    return;
+                }
+
+                var memoryStream = new MemoryStream();
+                await selectedFile.OpenReadStream(maxAllowedSize: maxFileSize).CopyToAsync(memoryStream);
+                registerModel.ContentType = selectedFile.ContentType;
+                registerModel.Data = memoryStream.ToArray();
+            }
+
+            var user = new ApplicationUser
+                {
+                    UserName = registerModel.Email,
+                    Email = registerModel.Email,
+                    FirstName = registerModel.FirstName,
+                    LastName = registerModel.LastName,
+                    Address = registerModel.Address,
+                    PhoneNumber = registerModel.PhoneNumber,
+                    ContentType = registerModel.ContentType,
+                    Data = registerModel.Data
+                };
+
+            var result = await UserManager.CreateAsync(user, registerModel.Password);
+
+            if (result.Succeeded)
+            {
+                await Task.Run(async () =>
+                {
+                    try
+                    {
+                        await SignInManager.SignInAsync(user, isPersistent: false);
+                    }
+                    catch (Exception ex)
+                    {
+                        errorMessage = ex.Message;
+                    }
+                });
+
+                Navigation.NavigateTo("/Home");
+            }
+            else
+            {
+                registrationErrors = result.Errors.Select(e => e.Description).ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+    }
+}

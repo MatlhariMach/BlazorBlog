@@ -1,0 +1,103 @@
+﻿@page "/posts"
+@inject IPostService PostService
+@inject ApplicationDbContext DbContext
+@using BlazorBlog.Data
+@using BlazorBlog.Models
+@using BlazorBlog.Services
+@using Microsoft.Extensions.Logging
+@using Microsoft.EntityFrameworkCore;
+
+
+<h3>Posts</h3>
+
+@if (posts == null)
+{
+    <p>Loading...</p>
+}
+else if (posts.Count == 0)
+{
+    <p>No posts available.</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Author</th>
+                <th>Author</th>
+                <th>Timestamp</th>
+                <th>Votes Up</th>
+                <th>Votes Down</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var post in posts)
+            {
+                <tr>
+                  <!--<td>@post.Title</td> -->
+                    <td>@post.AuthorId</td>
+                    <td>@post.Content</td>
+                    <td>@DateTimeOffset.FromUnixTimeMilliseconds(post.Timestamp).UtcDateTime</td>
+                    <td>@post.VoteUp</td>
+                    <td>@post.Votedown</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<Post> posts;
+    private string errorMessage = "";
+
+   protected override async Task OnInitializedAsync()
+      {
+          try
+          {
+              posts = await PostService.GetPostsAsync();
+              Console.WriteLine($"Fetched {posts.Count} posts.");
+          }
+          catch (Exception ex)
+          {
+              errorMessage = $"An error occurred while fetching posts: {ex.Message}";
+              Console.WriteLine(errorMessage);
+          }
+      } 
+
+    /* protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            posts = await DbContext.Posts.ToListAsync();
+            Console.WriteLine($"Fetched {posts.Count} posts directly from database.");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"An error occurred while fetching posts: {ex.Message}";
+            Console.WriteLine(errorMessage);
+        }
+    } 
+    */
+  /*  protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            posts = await PostService.GetPostsAsync();
+            if (posts == null || posts.Count == 0)
+            {
+                Console.WriteLine("No posts found.");
+            }
+            else
+            {
+                Console.WriteLine($"Fetched {posts.Count} posts.");
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"An error occurred while fetching posts: {ex.Message}";
+            Console.WriteLine(errorMessage);
+        }
+    } */
+
+}

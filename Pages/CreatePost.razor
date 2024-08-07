@@ -1,0 +1,124 @@
+﻿@page "/createpost"
+@inject IPostService PostService
+@inject NavigationManager Navigation
+@inject UserManager<ApplicationUser> UserManager
+@inject SignInManager<ApplicationUser> SignInManager
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@using System.ComponentModel.DataAnnotations
+@using BlazorBlog.Models
+@using BlazorBlog.Services
+@using Microsoft.AspNetCore.Identity
+
+<div id="content" class="flex">
+    <div class="">
+        <div class="page-content page-container" id="page-content">
+            <div class="padding">
+                <div class="row justify-content-center">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header"><strong>Create New Post</strong></div>
+                            <div class="card-body">
+                                <EditForm Model="post" OnValidSubmit="HandleValidSubmit">
+                                    <DataAnnotationsValidator />
+                                    <ValidationSummary />
+
+                                    <div class="form-group">
+                                        <label class="text-muted" for="title">Title:</label>
+                                        <InputText id="title" class="form-control" @bind-Value="post.Title" />
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="text-muted" for="content">Content:</label>
+                                        <InputTextArea id="content" class="form-control" @bind-Value="post.Content" />
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="text-muted" for="image">Image (optional):</label>
+                                        <InputFile id="image" class="form-control" OnChange="HandleFileSelected" />
+                                    </div>
+
+                                    <div class="text-danger">@ErrorMessage</div>
+
+                                    <button type="submit" class="btn btn-primary">Create Post</button>
+                                </EditForm>
+
+                                @if (errorMessage != null)
+                                {
+                                    <div class="alert alert-danger mt-2">@errorMessage</div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private Post post = new Post();
+    private string errorMessage = ""; 
+    private IBrowserFile? selectedFile;
+    private ApplicationUser currentUser;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        currentUser = await UserManager.GetUserAsync(authState.User);
+    }
+
+    private async Task HandleFileSelected(InputFileChangeEventArgs e)
+    {
+        selectedFile = e.File;
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        try
+        {
+            // Set the AuthorId to the current logged-in user's ID
+            post.AuthorId = currentUser.Id;
+
+            // a file is selected and process the image if it exists
+            if (selectedFile != null)
+            {
+                const long maxFileSize = 10485760; // 10 MB
+                if (selectedFile.Size > maxFileSize)
+                {
+                    errorMessage = $"File size exceeds the maximum allowed size of {maxFileSize / 1048576} MB.";
+                    return;
+                }
+
+                var memoryStream = new MemoryStream();
+                await selectedFile.OpenReadStream(maxAllowedSize: maxFileSize).CopyToAsync(memoryStream);
+                post.ContentType = selectedFile.ContentType;
+                post.Data = memoryStream.ToArray();
+            }
+
+            // Set other properties
+            post.Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            post.VoteUp = 0;
+            post.Votedown = 0;
+
+            // Add current user ID to vote lists
+            post.AddUserIdToVotelistup(currentUser.Id);
+            post.AddUserIdToVotelistdwn(currentUser.Id);
+
+            // Save the post
+            await PostService.AddPostAsync(post);
+
+            // Navigate to home page
+            Navigation.NavigateTo("/Home");
+        }
+        catch (Exception ex)
+        {
+            // Handle other exceptions by displaying an error message
+            errorMessage = $"An error occurred: {ex.Message}";
+        }
+    }
+
+    // Property to bind to UI for displaying error message
+    public string ErrorMessage
+    {
+        get { return errorMessage; }
+        set { errorMessage = value; }
+    }
+}
