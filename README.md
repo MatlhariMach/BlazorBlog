@@ -9,4 +9,4 @@ This is my project description.
 ![Homepage Screenshot](/screenshot/homep.png)
 
 ### Dashboard
-![Dashboard Screenshot](https://github.com/yourusername/yourrepository/blob/main/screenshots/dashboard_screenshot.png)
+![Dashboard Screenshot](https://github.com/MatlhariMach/BlazorBlog/main/screenshots/Home.png)
