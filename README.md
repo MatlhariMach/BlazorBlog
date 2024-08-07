@@ -24,7 +24,7 @@ This is my project description.
 ![Post2](Screenshot/Post2.png)
 
 ### Post with edit delete
-![Post with edit delete](Post with edit delete/Receit.png)
+![Post with edit delete](Screenshot/Post with edit delete.png)
 
 ### Delete
 ![Delete](Screenshot/Delete.png)
