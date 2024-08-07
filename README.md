@@ -1,8 +1,7 @@
 # BlazorBlog
 
 ## Description
-This is my project description.
-
+Social media like feed built on  ASP.NET Blazor
 ## Screenshots
 
 ### Register
