@@ -34,6 +34,9 @@ Social media like feed built on  ASP.NET Blazor
 ### Comment
 ![Comment](Screenshot/Comment.png)
 
+### Comment
+![Comment](Screenshot/comment edit delete.png)
+
 ### comment edit delete
 ![comment edit delete](Screenshot/comment edit delete.png)
 
